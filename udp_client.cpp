@@ -92,7 +92,7 @@ int main(int argc, char **argv)
     double actual_gbps = (8.0e-9 * npackets_tot * nbytes_per_packet) / (1.0e-6 * usec_elapsed);
 
 
-    cout << "udp_client: wrote " << (npackets_tot * nbytes_per_packet) << " bytes in " << (usec_elapsed/1.0e6) << " secs\n"
+    cout << "udp_client: wrote " << npackets_tot << " packets in " << (usec_elapsed/1.0e6) << " secs\n"
 	 << "   target_gpbs = " << target_gbps << "\n"
 	 << "   actual_gpbs = " << actual_gbps << "\n"
 	 << "   sleepfrac = " << (usec_sleeping/usec_elapsed) << "\n";
