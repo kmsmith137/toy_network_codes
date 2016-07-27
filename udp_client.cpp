@@ -29,9 +29,9 @@ inline double usec_between(struct timeval &tv1, struct timeval &tv2)
 
 int main(int argc, char **argv)
 {
-    static constexpr double target_gbps = 1.0;
+    static constexpr double target_gbps = 10.0;
     static constexpr int nbytes_per_packet = 4096;
-    static constexpr int npackets_tot = 100000;
+    static constexpr int npackets_tot = 10000000;
     static constexpr int udp_port = 13299;
     static const char *addr = "127.0.0.1";
 

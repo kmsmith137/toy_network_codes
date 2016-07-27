@@ -97,7 +97,7 @@ int main(int argc, char **argv)
 
     double gbps = (8.0e-9 * (npackets_received-1) * expected_nbytes_per_packet) / secs_elapsed;
 
-    cout << "udp_server: received " << npackets_received << " in " << secs_elapsed << " secs\n"
+    cout << "udp_server: received " << npackets_received << " packets in " << secs_elapsed << " secs\n"
 	 << "   gbps = " << gbps << "\n";
 
     if (npackets_received % expected_npackets)
