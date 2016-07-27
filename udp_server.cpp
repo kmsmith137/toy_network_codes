@@ -4,7 +4,9 @@
 #include <arpa/inet.h>
 
 #include <vector>
+#include <cstring>
 #include <iostream>
+#include <stdexcept>
 
 using namespace std;
 

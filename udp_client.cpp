@@ -3,8 +3,11 @@
 #include <unistd.h>
 #include <sys/time.h>
 #include <arpa/inet.h>
+
 #include <vector>
+#include <cstring>
 #include <iostream>
+#include <stdexcept>
 
 using namespace std;
 
@@ -29,9 +32,9 @@ inline double usec_between(struct timeval &tv1, struct timeval &tv2)
 
 int main(int argc, char **argv)
 {
-    static constexpr double target_gbps = 10.0;
+    static constexpr double target_gbps = 1.0;
     static constexpr int nbytes_per_packet = 4096;
-    static constexpr int npackets_tot = 10000000;
+    static constexpr int npackets_tot = 100000;
     static constexpr int udp_port = 13299;
     static const char *addr = "127.0.0.1";
 
@@ -68,7 +71,7 @@ int main(int argc, char **argv)
 
 	// how many usec in the future should we sent the packet?
 	double t1 = (usec_per_packet * ipacket) - usec_between(tv_ini, tv_curr);
-	double t2 = (0.5 * usec_per_packet) - usec_between(tv_prev, tv_curr);
+	double t2 = (0.3 * usec_per_packet) - usec_between(tv_prev, tv_curr);
 	double t = max(t1, t2);
 	
 	if (t >= 1.0) {
