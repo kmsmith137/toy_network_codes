@@ -9,20 +9,35 @@
 using namespace std;
 
 
+inline struct timeval xgettimeofday()
+{
+    struct timeval tv;
+
+    int err = gettimeofday(&tv, NULL);
+    if (err)
+	throw runtime_error("gettimeofday failed");
+
+    return tv;
+}
+
+inline double secs_between(struct timeval &tv1, struct timeval &tv2)
+{
+    return (tv2.tv_sec - tv1.tv_sec) + 1.0e-6*(tv2.tv_usec - tv1.tv_usec);
+}
+
+
 int main(int argc, char **argv)
 {
     static constexpr int expected_nbytes_per_packet = 4096;
-    //    static constexpr int expected_npackets = 100000;
+    static constexpr int expected_npackets = 100000;
     static constexpr int udp_port = 13299;
 
     // FIXME is 2MB socket_bufsize a good choice?  I would have guessed a larger value 
     // would be better, but 2MB is the max allowed on my osx laptop.
     static constexpr int socket_bufsize = 2 << 21; 
 
-    std::vector<uint8_t> packet(2 * expected_nbytes_per_packet, 0);
-
-    int sock_fd = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
-    if (sock_fd < 0)
+    int sockfd = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+    if (sockfd < 0)
 	throw runtime_error(string("socket() failed: ") + strerror(errno));
 
     struct sockaddr_in server_address;
@@ -32,24 +47,61 @@ int main(int argc, char **argv)
     inet_pton(AF_INET, "0.0.0.0", &server_address.sin_addr);
     server_address.sin_port = htons(udp_port);
     
-    int err = ::bind(sock_fd, (struct sockaddr *) &server_address, sizeof(server_address));
+    int err = ::bind(sockfd, (struct sockaddr *) &server_address, sizeof(server_address));
     if (err < 0)
 	throw runtime_error(string("bind() failed: ") + strerror(errno));
 
-    err = setsockopt(sock_fd, SOL_SOCKET, SO_RCVBUF, (void *) &socket_bufsize, sizeof(socket_bufsize));
+    err = setsockopt(sockfd, SOL_SOCKET, SO_RCVBUF, (void *) &socket_bufsize, sizeof(socket_bufsize));
     if (err < 0)
 	throw runtime_error(string("setsockopt() failed: ") + strerror(errno));
 
-    cout << "udp_server listening on port " << udp_port << "\n";
+    cout << "udp_server listening on port " << udp_port << "\n"
+	 << "A timer will start when the first packet is received.\n"
+	 << "Subsequently, if no packets are received in a 1-sec interval, the timer will stop and the server will exit.\n";
+
+    std::vector<uint8_t> packet(2 * expected_nbytes_per_packet, 0);
+    ssize_t npackets_received = 0;
+    struct timeval tv_start = xgettimeofday();
+    struct timeval tv_end = xgettimeofday();
 
     for (;;) {
-	int packet_nbytes = read(sock_fd, (char *) &packet[0], packet.size());
+	int packet_nbytes = read(sockfd, (char *) &packet[0], packet.size());
 	if (packet_nbytes < 0)
-	    throw runtime_error("read() failed");
+	    break;
 	if (packet_nbytes != expected_nbytes_per_packet)
 	    throw runtime_error("return value from read() is not equal to expected_nbytes_per_packet");
+
+	tv_end = xgettimeofday();
+	npackets_received++;
+
+	if (npackets_received > 1)
+	    continue;
+
+	// If we get here, this is the first packet!  Update tv_start to its arrival time.
+	tv_start = tv_end;
+
+	// Set 1-sec timeout for subsequent calls to read().
+	struct timeval tv_timeout = { 1, 0 };
+
+	err = setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, (char *)&tv_timeout, sizeof(struct timeval));
+	if (err < 0)
+	    throw runtime_error(string("setsockopt() failed: ") + strerror(errno));
     }
 
-    // FIXME show packet count
+    double secs_elapsed = secs_between(tv_start, tv_end);
+    
+    if ((errno != EAGAIN) && (errno != EWOULDBLOCK) && (errno != ETIMEDOUT))
+	throw runtime_error("read() failed");
+    if (npackets_received < 2)
+	throw runtime_error("udp_server received < 2 packets");
+
+    double gbps = (8.0e-9 * (npackets_received-1) * expected_nbytes_per_packet) / secs_elapsed;
+
+    cout << "udp_server: received " << npackets_received << " in " << secs_elapsed << " secs\n"
+	 << "   gbps = " << gbps << "\n";
+
+    if (npackets_received % expected_npackets)
+	cout << "WARNING: npackets_received is not a multiple of expected_npackets, suggesting some packets were dropped\n";
+
     return 0;
 }
