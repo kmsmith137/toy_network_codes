@@ -32,11 +32,11 @@ int main(int argc, char **argv)
 {
     static constexpr int expected_nbytes_per_packet = 4096;
     static constexpr int expected_npackets = 100000;
-    static constexpr int udp_port = 13299;
+    static constexpr int udp_port = 10252;
 
-    // FIXME is 2MB socket_bufsize a good choice?  I would have guessed a larger value 
-    // would be better, but 2MB is the max allowed on my osx laptop.
-    static constexpr int socket_bufsize = 2 << 21; 
+    // FIXME is 4MB socket_bufsize a good choice?  I would have guessed a larger value 
+    // would be better, but 4MB is the max allowed on my osx laptop.
+    static constexpr int socket_bufsize = 1 << 22; 
 
     int sockfd = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
     if (sockfd < 0)
