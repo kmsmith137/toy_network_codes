@@ -30,8 +30,7 @@ inline double secs_between(struct timeval &tv1, struct timeval &tv2)
 
 int main(int argc, char **argv)
 {
-    static constexpr int expected_nbytes_per_packet = 4096;
-    static constexpr int expected_npackets = 100000;
+    static constexpr int max_packet_size = 9000;
     static constexpr int udp_port = 10252;
 
     // FIXME is 4MB socket_bufsize a good choice?  I would have guessed a larger value 
@@ -61,19 +60,26 @@ int main(int argc, char **argv)
 	 << "A timer will start when the first packet is received.\n"
 	 << "Subsequently, if no packets are received in a 1-sec interval, the timer will stop and the server will exit.\n";
 
-    std::vector<uint8_t> packet(2 * expected_nbytes_per_packet, 0);
-    ssize_t npackets_received = 0;
+    std::vector<uint8_t> packet(max_packet_size+1, 0);
     struct timeval tv_start = xgettimeofday();
     struct timeval tv_end = xgettimeofday();
+    ssize_t npackets_received = 0;
+    ssize_t nbytes_received = 0;
 
     for (;;) {
 	int packet_nbytes = read(sockfd, (char *) &packet[0], packet.size());
-	if (packet_nbytes < 0)
-	    break;
-	if (packet_nbytes != expected_nbytes_per_packet)
-	    throw runtime_error("return value from read() is not equal to expected_nbytes_per_packet");
+	
+	if (packet_nbytes < 0) {
+	    if ((errno == EAGAIN) || (errno == ETIMEDOUT))
+		break;   // read() timed out
+	    throw runtime_error(string("read() failed: ") + strerror(errno));
+	}
+
+	if (packet_nbytes > max_packet_size)
+	    throw runtime_error("packet exceeded max allowed size?!");
 
 	tv_end = xgettimeofday();
+	nbytes_received += packet_nbytes;
 	npackets_received++;
 
 	if (npackets_received > 1)
@@ -91,19 +97,13 @@ int main(int argc, char **argv)
     }
 
     double secs_elapsed = secs_between(tv_start, tv_end);
-    
+    double gbps = 8.0e-9 * nbytes_received / secs_elapsed;
+
     if ((errno != EAGAIN) && (errno != EWOULDBLOCK) && (errno != ETIMEDOUT))
 	throw runtime_error("read() failed");
     if (npackets_received < 2)
 	throw runtime_error("udp_server received < 2 packets");
 
-    double gbps = (8.0e-9 * (npackets_received-1) * expected_nbytes_per_packet) / secs_elapsed;
-
-    cout << "udp_server: received " << npackets_received << " packets in " << secs_elapsed << " secs\n"
-	 << "   gbps = " << gbps << "\n";
-
-    if (npackets_received % expected_npackets)
-	cout << "WARNING: npackets_received is not a multiple of expected_npackets, suggesting some packets were dropped\n";
-
+    cout << "udp_server: received " << npackets_received << " packets in " << secs_elapsed << " secs (" << gbps << " gpbs)\n";
     return 0;
 }
