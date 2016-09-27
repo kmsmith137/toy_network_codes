@@ -14,7 +14,7 @@ using namespace std;
 int main(int argc, char **argv)
 {
     if (argc != 2) {
-	cerr << "usage: dns-lookup [-n] <hostname>\n";
+	cerr << "usage: dns-lookup <hostname>\n";
 	exit(2);
     }
 
@@ -56,6 +56,8 @@ int main(int argc, char **argv)
 
 	cout << hostname << " -> " << &buf[0] << endl;
     }
+
+    freeaddrinfo(result);
 
     return 0;
 }
