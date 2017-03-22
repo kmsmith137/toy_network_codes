@@ -1,13 +1,14 @@
-// g++ -std=c++11 -pthread -fPIC -Wall -O3 -o udp_client udp_client.cpp
-
 #include <unistd.h>
 #include <sys/time.h>
 #include <arpa/inet.h>
 
 #include <vector>
 #include <cstring>
+#include <cassert>
 #include <iostream>
 #include <stdexcept>
+
+#include "lexical_cast.hpp"
 
 using namespace std;
 
@@ -24,32 +25,77 @@ inline struct timeval xgettimeofday()
 }
 
 
-inline double usec_between(struct timeval &tv1, struct timeval &tv2)
+inline double usec_between(const struct timeval &tv1, const struct timeval &tv2)
 {
     return 1.0e6*(tv2.tv_sec - tv1.tv_sec) + (tv2.tv_usec - tv1.tv_usec);
 }
 
 
+static void usage()
+{
+    cerr << "usage: udp_client <ip_addr> <port>\n"
+	 << "with flags as follows:\n"
+	 << "    -g GIGABITS_PER_SECOND (default 0.95)\n"
+	 << "    -n NBYTES_PER_PACKET (default 1500)\n"
+	 << "    -t TIMEOUT_SECONDS (default 10)\n";
+
+    exit(2);
+}
+
+
 int main(int argc, char **argv)
 {
-    static constexpr double target_gbps = 1.0;
-    static constexpr int nbytes_per_packet = 4096;
-    static constexpr int npackets_tot = 100000;
-    static constexpr int udp_port = 13299;
-    static const char *addr = "127.0.0.1";
+    vector<string> args;
+    int nbytes_per_packet = 1500;
+    double timeout = 10.0;
+    double gbps = 0.95;
 
-    static constexpr double usec_per_packet = 1.0e6 * (8.0e-9 * nbytes_per_packet) / target_gbps;
+    // Low-budget command-line parsing
+    for (int i = 1; i < argc; i++) {
+	if (argv[i][0] != '-') {
+	    args.push_back(argv[i]);
+	    continue;
+	}
 
-    vector<uint8_t> packet(nbytes_per_packet, 0);
+	if (i == argc-1)
+	    usage();
+
+	bool ret = false;
+
+	if (!strcmp(argv[i], "-g"))
+	    ret = lexical_cast<double> (argv[i+1], gbps);
+	else if (!strcmp(argv[i], "-n"))
+	    ret = lexical_cast<int> (argv[i+1], nbytes_per_packet);
+	else if (!strcmp(argv[i], "-t"))
+	    ret = lexical_cast<double> (argv[i+1], timeout);
+	else
+	    usage();
+
+	if (!ret)
+	    usage();
+
+	i++;   // advance by extra token
+    }
+
+    if (args.size() != 2)
+	usage();
+
+    string ip_addr = args[0];
+    int udp_port = lexical_cast<int> (args[1], "udp_port");
+
+    assert(gbps > 0.0);
+    assert(timeout > 0.0);
+    assert(nbytes_per_packet > 0 && nbytes_per_packet <= 65536);
+    assert(udp_port > 0 && udp_port < 65536);
 
     struct sockaddr_in saddr;
     memset(&saddr, 0, sizeof(saddr));
     saddr.sin_family = AF_INET;
     saddr.sin_port = htons(udp_port);
 
-    int err = inet_pton(AF_INET, addr, &saddr.sin_addr);
+    int err = inet_pton(AF_INET, ip_addr.c_str(), &saddr.sin_addr);
     if (err <= 0)
-	throw runtime_error("ch_frb_io: inet_pton() failed (note that no DNS lookup is done, the argument must be a numerical IP address)");
+	throw runtime_error(ip_addr + ": inet_pton() failed (note that no DNS lookup is done, the argument must be a numerical IP address)");
 
     int sockfd = socket(AF_INET, SOCK_DGRAM, 0);
     if (sockfd < 0)
@@ -62,23 +108,24 @@ int main(int argc, char **argv)
         throw runtime_error(string("connect() failed: ") + strerror(errno));
     }
 
+    int npackets = int(timeout * gbps / (8.0e-9 * nbytes_per_packet)) + 1;
+    vector<uint8_t> packet(nbytes_per_packet, 0);
+
+    cout << "udp_client: writing " << npackets 
+	 << " packets to " << ip_addr << ":" << udp_port 
+	 << " (gbps=" << gbps << ", nbytes_per_packet=" << nbytes_per_packet << ")" << endl;
+
     struct timeval tv_ini = xgettimeofday();
-    struct timeval tv_prev = tv_ini;
-    double usec_sleeping = 0.0;
 
-    for (int ipacket = 0; ipacket < npackets_tot; ipacket++) {
-	struct timeval tv_curr = xgettimeofday();
+    for (int ipacket = 0; ipacket < npackets; ipacket++) {
+	// Microseconds
+	double dt = usec_between(tv_ini, xgettimeofday());
+	double dt_target = 8.0e-3 * nbytes_per_packet * ipacket / gbps;
 
-	// how many usec in the future should we sent the packet?
-	double t1 = (usec_per_packet * ipacket) - usec_between(tv_ini, tv_curr);
-	double t2 = (0.3 * usec_per_packet) - usec_between(tv_prev, tv_curr);
-	double t = max(t1, t2);
-	
-	if (t >= 1.0) {
-	    int err = usleep(t);
+	if (dt_target > dt + 1.0) {
+	    int err = usleep(dt_target - dt);
 	    if (err)
 		throw runtime_error("usleep failed");
-	    usec_sleeping += t;
 	}
 
 	ssize_t n = send(sockfd, &packet[0], nbytes_per_packet, 0);
@@ -86,19 +133,14 @@ int main(int argc, char **argv)
 	    throw runtime_error(string("send() failed: ") + strerror(errno));
 	if (n != nbytes_per_packet)
 	    throw runtime_error("send() only did a partial write?!");
-
-	tv_prev = tv_curr;
     }
 
-    struct timeval tv_end = xgettimeofday();
-    double usec_elapsed = usec_between(tv_ini, tv_end);
-    double actual_gbps = (8.0e-9 * npackets_tot * nbytes_per_packet) / (1.0e-6 * usec_elapsed);
+    double usec_elapsed = usec_between(tv_ini, xgettimeofday());
+    double actual_gbps = (8.0e-3 * npackets * nbytes_per_packet) / usec_elapsed;
 
-
-    cout << "udp_client: wrote " << npackets_tot << " packets in " << (usec_elapsed/1.0e6) << " secs\n"
-	 << "   target_gpbs = " << target_gbps << "\n"
-	 << "   actual_gpbs = " << actual_gbps << "\n"
-	 << "   sleepfrac = " << (usec_sleeping/usec_elapsed) << "\n";
+    cout << "udp_client: wrote " << npackets << " packets in " << (usec_elapsed/1.0e6) << " secs\n"
+	 << "   target_gpbs = " << gbps << "\n"
+	 << "   actual_gpbs = " << actual_gbps << "\n";
 
     return 0;
 }
