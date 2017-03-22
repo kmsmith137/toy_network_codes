@@ -8,6 +8,8 @@
 #include <iostream>
 #include <stdexcept>
 
+#include "lexical_cast.hpp"
+
 using namespace std;
 
 
@@ -28,27 +30,45 @@ inline double secs_between(struct timeval &tv1, struct timeval &tv2)
 }
 
 
+static void usage()
+{
+    cerr << "usage: udp_server <ip_addr> <port>\n";
+    exit(2);
+}
+
+
 int main(int argc, char **argv)
 {
-    static constexpr int max_packet_size = 9000;
-    static constexpr int udp_port = 10252;
+#ifdef __APPLE__
+    // osx seems to have very small limits on socket buffer size
+    static constexpr int socket_bufsize = 4 * 1024 * 1024;
+#else
+    static constexpr int socket_bufsize = 128 * 1024 * 1024;
+#endif
 
-    // FIXME is 4MB socket_bufsize a good choice?  I would have guessed a larger value 
-    // would be better, but 4MB is the max allowed on my osx laptop.
-    static constexpr int socket_bufsize = 1 << 22; 
+    // too large, but that's ok!
+    static constexpr int max_packet_size = 65536;
+
+    if (argc != 3)
+	usage();
+
+    string ip_addr = argv[1];
+    int udp_port = lexical_cast<int> (argv[2], "udp_port");
 
     int sockfd = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
     if (sockfd < 0)
 	throw runtime_error(string("socket() failed: ") + strerror(errno));
 
-    struct sockaddr_in server_address;
-    memset(&server_address, 0, sizeof(server_address));
-	
-    server_address.sin_family = AF_INET;
-    inet_pton(AF_INET, "0.0.0.0", &server_address.sin_addr);
-    server_address.sin_port = htons(udp_port);
-    
-    int err = ::bind(sockfd, (struct sockaddr *) &server_address, sizeof(server_address));
+    struct sockaddr_in saddr;
+    memset(&saddr, 0, sizeof(saddr));
+    saddr.sin_family = AF_INET;
+    saddr.sin_port = htons(udp_port);
+
+    int err = inet_pton(AF_INET, ip_addr.c_str(), &saddr.sin_addr);
+    if (err <= 0)
+	throw runtime_error(ip_addr + ": inet_pton() failed (note that no DNS lookup is done, the argument must be a numerical IP address)");
+
+    err = ::bind(sockfd, (struct sockaddr *) &saddr, sizeof(saddr));
     if (err < 0)
 	throw runtime_error(string("bind() failed: ") + strerror(errno));
 
@@ -56,7 +76,7 @@ int main(int argc, char **argv)
     if (err < 0)
 	throw runtime_error(string("setsockopt() failed: ") + strerror(errno));
 
-    cout << "udp_server listening on port " << udp_port << "\n"
+    cout << "udp_server listening on " << ip_addr << ":" << udp_port << "\n"
 	 << "A timer will start when the first packet is received.\n"
 	 << "Subsequently, if no packets are received in a 1-sec interval, the timer will stop and the server will exit.\n";
 
