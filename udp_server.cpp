@@ -1,33 +1,15 @@
 #include <unistd.h>
-#include <sys/time.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
 
 #include <vector>
 #include <cstring>
 #include <iostream>
-#include <stdexcept>
 
+#include "time_inlines.hpp"
 #include "lexical_cast.hpp"
 
 using namespace std;
-
-
-inline struct timeval xgettimeofday()
-{
-    struct timeval tv;
-
-    int err = gettimeofday(&tv, NULL);
-    if (err)
-	throw runtime_error("gettimeofday failed");
-
-    return tv;
-}
-
-inline double secs_between(struct timeval &tv1, struct timeval &tv2)
-{
-    return (tv2.tv_sec - tv1.tv_sec) + 1.0e-6*(tv2.tv_usec - tv1.tv_usec);
-}
 
 
 static void usage()

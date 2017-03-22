@@ -1,34 +1,15 @@
 #include <unistd.h>
-#include <sys/time.h>
 #include <arpa/inet.h>
 
 #include <vector>
 #include <cstring>
 #include <cassert>
 #include <iostream>
-#include <stdexcept>
 
+#include "time_inlines.hpp"
 #include "lexical_cast.hpp"
 
 using namespace std;
-
-
-inline struct timeval xgettimeofday()
-{
-    struct timeval tv;
-
-    int err = gettimeofday(&tv, NULL);
-    if (err)
-	throw runtime_error("gettimeofday failed");
-
-    return tv;
-}
-
-
-inline double usec_between(const struct timeval &tv1, const struct timeval &tv2)
-{
-    return 1.0e6*(tv2.tv_sec - tv1.tv_sec) + (tv2.tv_usec - tv1.tv_usec);
-}
 
 
 static void usage()
@@ -119,7 +100,7 @@ int main(int argc, char **argv)
 
     for (int ipacket = 0; ipacket < npackets; ipacket++) {
 	// Microseconds
-	double dt = usec_between(tv_ini, xgettimeofday());
+	double dt = usecs_between(tv_ini, xgettimeofday());
 	double dt_target = 8.0e-3 * nbytes_per_packet * ipacket / gbps;
 
 	if (dt_target > dt + 1.0) {
@@ -135,10 +116,10 @@ int main(int argc, char **argv)
 	    throw runtime_error("send() only did a partial write?!");
     }
 
-    double usec_elapsed = usec_between(tv_ini, xgettimeofday());
-    double actual_gbps = (8.0e-3 * npackets * nbytes_per_packet) / usec_elapsed;
+    double sec_elapsed = secs_between(tv_ini, xgettimeofday());
+    double actual_gbps = (8.0e-9 * npackets * nbytes_per_packet) / sec_elapsed;
 
-    cout << "udp_client: wrote " << npackets << " packets in " << (usec_elapsed/1.0e6) << " secs\n"
+    cout << "udp_client: wrote " << npackets << " packets in " << sec_elapsed << " secs\n"
 	 << "   target_gpbs = " << gbps << "\n"
 	 << "   actual_gpbs = " << actual_gbps << "\n";
 

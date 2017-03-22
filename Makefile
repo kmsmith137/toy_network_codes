@@ -8,8 +8,8 @@ dns-lookup: dns-lookup.cpp
 local_socket_server: local_socket_server.cpp
 	$(CPP) -o $@ $<
 
-udp_client: udp_client.cpp lexical_cast.cpp
-	$(CPP) -o $@ $^
+udp_client: udp_client.cpp lexical_cast.cpp lexical_cast.hpp time_inlines.hpp
+	$(CPP) -o $@ udp_client.cpp lexical_cast.cpp
 
-udp_server: udp_server.cpp lexical_cast.cpp
-	$(CPP) -o $@ $^
+udp_server: udp_server.cpp lexical_cast.cpp lexical_cast.hpp time_inlines.hpp
+	$(CPP) -o $@ udp_server.cpp lexical_cast.cpp
