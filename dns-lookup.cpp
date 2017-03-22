@@ -8,6 +8,8 @@
 
 #include <vector>
 #include <iostream>
+#include <cstring>
+#include <stdexcept>
 
 using namespace std;
 
@@ -34,7 +36,7 @@ int main(int argc, char **argv)
 
     struct addrinfo hint;
     memset(&hint, 0, sizeof(hint));
-    hint.ai_flags = AI_DEFAULT;
+    hint.ai_flags = AI_V4MAPPED | AI_ADDRCONFIG;
     hint.ai_family = AF_INET;   // IPv4
     hint.ai_socktype = SOCK_DGRAM;
     hint.ai_protocol = IPPROTO_UDP;

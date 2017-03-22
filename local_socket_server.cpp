@@ -30,8 +30,6 @@ inline double secs_between(struct timeval &tv1, struct timeval &tv2)
 
 int main(int argc, char **argv)
 {
-    static constexpr int max_packet_size = 9000;
-
     int sockfd = socket(AF_UNIX, SOCK_SEQPACKET, 0);
     if (sockfd < 0)
 	throw runtime_error(string("socket() failed: ") + strerror(errno));
