@@ -1,6 +1,6 @@
 CPP=g++ -std=c++11 -Wall -O3
 
-all: dns-lookup local_socket_server udp_client udp_server
+all: dns-lookup local_socket_server udp_client udp_server tcp_client tcp_server
 
 dns-lookup: dns-lookup.cpp
 	$(CPP) -o $@ $<
