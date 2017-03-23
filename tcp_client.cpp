@@ -5,8 +5,8 @@
 #include <cstring>
 #include <cassert>
 #include <iostream>
+#include <stdexcept>
 
-#include "time_inlines.hpp"
 #include "lexical_cast.hpp"
 
 using namespace std;
@@ -14,9 +14,7 @@ using namespace std;
 
 static void usage()
 {
-    cerr << "usage: tcp_client <ip_addr> <port>\n"
-	 << "    -t TIME_SECONDS (default 10)\n";
-
+    cerr << "usage: tcp_client <ip_addr> <port>\n";
     exit(2);
 }
 
@@ -26,39 +24,12 @@ int main(int argc, char **argv)
     // Write data in 1MB chunks
     static constexpr int chunk_size = 1024 * 1024;
 
-    vector<string> args;
-    double time_seconds = 10.0;
-
-    // Low-budget command-line parsing
-    for (int i = 1; i < argc; i++) {
-	if (argv[i][0] != '-') {
-	    args.push_back(argv[i]);
-	    continue;
-	}
-
-	if (i == argc-1)
-	    usage();
-
-	bool ret = false;
-
-	if (!strcmp(argv[i], "-t"))
-	    ret = lexical_cast<double> (argv[i+1], time_seconds);
-	else
-	    usage();
-
-	if (!ret)
-	    usage();
-
-	i++;   // advance by extra token
-    }
-
-    if (args.size() != 2)
+    if (argc != 3)
 	usage();
 
-    string ip_addr = args[0];
-    int tcp_port = lexical_cast<int> (args[1], "tcp_port");
+    string ip_addr = argv[1];
+    int tcp_port = lexical_cast<int> (argv[2], "tcp_port");
 
-    assert(time_seconds > 0.0);
     assert(tcp_port > 0 && tcp_port < 65536);
 
     struct sockaddr_in saddr;
@@ -82,12 +53,11 @@ int main(int argc, char **argv)
     }
 
     vector<char> chunk(chunk_size, 0);
-    cout << "tcp_client: writing to " << ip_addr << ":" << tcp_port << endl;
 
-    bool flag = false;
-    struct timeval tv_ini = xgettimeofday();
+    cout << "tcp_client: writing to " << ip_addr << ":" << tcp_port << "\n"
+	 << "Press control-C to exit!" << endl;
 
-    while (!flag || (secs_between(tv_ini, xgettimeofday()) < time_seconds)) {
+    for (;;) {
 	ssize_t n = send(sockfd, &chunk[0], chunk_size, 0);
 	if (n < 0)
 	    throw runtime_error(string("send() failed: ") + strerror(errno));
