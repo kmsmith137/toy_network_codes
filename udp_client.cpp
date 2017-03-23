@@ -17,7 +17,7 @@ static void usage()
     cerr << "usage: udp_client <ip_addr> <port>\n"
 	 << "with flags as follows:\n"
 	 << "    -g GIGABITS_PER_SECOND (default 0.95)\n"
-	 << "    -n NBYTES_PER_PACKET (default 1500)\n"
+	 << "    -n NBYTES_PER_PACKET (default 1400)\n"
 	 << "    -t TIMEOUT_SECONDS (default 10)\n";
 
     exit(2);
@@ -27,7 +27,7 @@ static void usage()
 int main(int argc, char **argv)
 {
     vector<string> args;
-    int nbytes_per_packet = 1500;
+    int nbytes_per_packet = 1400;
     double timeout = 10.0;
     double gbps = 0.95;
 
