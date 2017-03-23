@@ -14,5 +14,8 @@ udp_client: udp_client.cpp lexical_cast.cpp lexical_cast.hpp time_inlines.hpp
 udp_server: udp_server.cpp lexical_cast.cpp lexical_cast.hpp time_inlines.hpp
 	$(CPP) -o $@ udp_server.cpp lexical_cast.cpp
 
-tcp_client: tcp_client.cpp lexical_cast.cpp lexical_cast.hpp time_inlines.hpp
+tcp_client: tcp_client.cpp lexical_cast.cpp lexical_cast.hpp
 	$(CPP) -o $@ tcp_client.cpp lexical_cast.cpp
+
+tcp_server: tcp_server.cpp lexical_cast.cpp lexical_cast.hpp time_inlines.hpp
+	$(CPP) -o $@ tcp_server.cpp lexical_cast.cpp

@@ -88,7 +88,7 @@ int main(int argc, char **argv)
 	    continue;
 
 	// If we get here, this is the first packet!  Update tv_start to its arrival time.
-	cerr << "got packet!\n";
+	cout << "got packet!\n";
 	tv_start = tv_end;
 
 	// Set 1-sec timeout for subsequent calls to read().
