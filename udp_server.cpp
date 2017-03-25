@@ -53,60 +53,58 @@ int main(int argc, char **argv)
     err = ::bind(sockfd, (struct sockaddr *) &saddr, sizeof(saddr));
     if (err < 0)
 	throw runtime_error(string("bind() failed: ") + strerror(errno));
+    
+    struct timeval tv_timeout = { 1, 0 };   // 1 second
+    
+    err = setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, (char *)&tv_timeout, sizeof(struct timeval));
+    if (err < 0)
+	throw runtime_error(string("setsockopt() failed: ") + strerror(errno));
 
     err = setsockopt(sockfd, SOL_SOCKET, SO_RCVBUF, (void *) &socket_bufsize, sizeof(socket_bufsize));
     if (err < 0)
 	throw runtime_error(string("setsockopt() failed: ") + strerror(errno));
 
     cout << "udp_server listening on " << ip_addr << ":" << udp_port << "\n"
-	 << "A timer will start when the first packet is received.\n"
-	 << "Subsequently, if no packets are received in a 1-sec interval, the timer will stop and the server will exit.\n";
+	 << "The udp_server will delimit \"streams\" based on 1-second intervals with no packets, and report timings for each stream.\n";
 
     std::vector<uint8_t> packet(max_packet_size+1, 0);
-    struct timeval tv_start = xgettimeofday();
-    struct timeval tv_end = xgettimeofday();
-    ssize_t npackets_received = 0;
-    ssize_t nbytes_received = 0;
 
+    // Outer loop over streams.
     for (;;) {
-	int packet_nbytes = read(sockfd, (char *) &packet[0], packet.size());
+	struct timeval tv_start = xgettimeofday();
+	struct timeval tv_end = xgettimeofday();
+	ssize_t npackets_received = 0;
+	ssize_t nbytes_received = 0;
+
+	// Inner loop over packets.
+	for (;;) {
+	    int packet_nbytes = read(sockfd, (char *) &packet[0], packet.size());
 	
-	if (packet_nbytes < 0) {
-	    if ((errno == EAGAIN) || (errno == ETIMEDOUT))
-		break;   // read() timed out
-	    throw runtime_error(string("read() failed: ") + strerror(errno));
+	    if (packet_nbytes < 0) {
+		if ((errno != EAGAIN) && (errno != ETIMEDOUT))
+		    throw runtime_error(string("read() failed: ") + strerror(errno));
+		if (npackets_received > 0)
+		    break;   // timed out, end of stream
+		continue;    // timed out, but still waiting for first packet
+	    }
+
+	    if (packet_nbytes > max_packet_size)
+		throw runtime_error("packet exceeded max allowed size?!");
+
+	    if (npackets_received == 0) {
+		cout << "received first packet in stream\n";
+		tv_start = xgettimeofday();
+	    }
+
+	    tv_end = xgettimeofday();
+	    nbytes_received += packet_nbytes;
+	    npackets_received++;
 	}
 
-	if (packet_nbytes > max_packet_size)
-	    throw runtime_error("packet exceeded max allowed size?!");
-
-	tv_end = xgettimeofday();
-	nbytes_received += packet_nbytes;
-	npackets_received++;
-
-	if (npackets_received > 1)
-	    continue;
-
-	// If we get here, this is the first packet!  Update tv_start to its arrival time.
-	cout << "got packet!\n";
-	tv_start = tv_end;
-
-	// Set 1-sec timeout for subsequent calls to read().
-	struct timeval tv_timeout = { 1, 0 };
-
-	err = setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, (char *)&tv_timeout, sizeof(struct timeval));
-	if (err < 0)
-	    throw runtime_error(string("setsockopt() failed: ") + strerror(errno));
+	double secs_elapsed = secs_between(tv_start, tv_end);
+	double gbps = 8.0e-9 * nbytes_received / secs_elapsed;
+	cout << "udp_server: received " << npackets_received << " packets in " << secs_elapsed << " secs (" << gbps << " gpbs)\n";
     }
 
-    double secs_elapsed = secs_between(tv_start, tv_end);
-    double gbps = 8.0e-9 * nbytes_received / secs_elapsed;
-
-    if ((errno != EAGAIN) && (errno != EWOULDBLOCK) && (errno != ETIMEDOUT))
-	throw runtime_error("read() failed");
-    if (npackets_received < 2)
-	throw runtime_error("udp_server received < 2 packets");
-
-    cout << "udp_server: received " << npackets_received << " packets in " << secs_elapsed << " secs (" << gbps << " gpbs)\n";
     return 0;
 }
