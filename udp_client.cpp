@@ -18,7 +18,7 @@ static void usage()
 	 << "with flags as follows:\n"
 	 << "    -g GIGABITS_PER_SECOND (default 0.95)\n"
 	 << "    -n NBYTES_PER_PACKET (default 1400)\n"
-	 << "    -t TIMEOUT_SECONDS (default 10)\n";
+	 << "    -t TIME_SECONDS (default 10)\n";
 
     exit(2);
 }
@@ -28,7 +28,7 @@ int main(int argc, char **argv)
 {
     vector<string> args;
     int nbytes_per_packet = 1400;
-    double timeout = 10.0;
+    double time_seconds = 10.0;
     double gbps = 0.95;
 
     // Low-budget command-line parsing
@@ -48,7 +48,7 @@ int main(int argc, char **argv)
 	else if (!strcmp(argv[i], "-n"))
 	    ret = lexical_cast<int> (argv[i+1], nbytes_per_packet);
 	else if (!strcmp(argv[i], "-t"))
-	    ret = lexical_cast<double> (argv[i+1], timeout);
+	    ret = lexical_cast<double> (argv[i+1], time_seconds);
 	else
 	    usage();
 
@@ -65,7 +65,7 @@ int main(int argc, char **argv)
     int udp_port = lexical_cast<int> (args[1], "udp_port");
 
     assert(gbps > 0.0);
-    assert(timeout > 0.0);
+    assert(time_seconds > 0.0);
     assert(nbytes_per_packet > 0 && nbytes_per_packet <= 65536);
     assert(udp_port > 0 && udp_port < 65536);
 
@@ -89,7 +89,7 @@ int main(int argc, char **argv)
         throw runtime_error(string("connect() failed: ") + strerror(errno));
     }
 
-    int npackets = int(timeout * gbps / (8.0e-9 * nbytes_per_packet)) + 1;
+    int npackets = int(time_seconds * gbps / (8.0e-9 * nbytes_per_packet)) + 1;
     vector<uint8_t> packet(nbytes_per_packet, 0);
 
     cout << "udp_client: writing " << npackets 
