@@ -1,6 +1,14 @@
 CPP=g++ -std=c++11 -Wall -O3
+BINDIR=$(HOME)/bin
+BINFILES=dns-lookup local_socket_server udp_client udp_server tcp_client tcp_server
 
-all: dns-lookup local_socket_server udp_client udp_server tcp_client tcp_server
+all: $(BINFILES)
+
+install: $(BINFILES)
+	mkdir -p $(BINDIR)/ && cp -f $(BINFILES) $(BINDIR)/
+
+clean:
+	rm -f *~ $(BINFILES)
 
 dns-lookup: dns-lookup.cpp
 	$(CPP) -o $@ $<
