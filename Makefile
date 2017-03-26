@@ -1,11 +1,13 @@
 CPP=g++ -std=c++11 -Wall -O3
 BINDIR=$(HOME)/bin
+
 BINFILES=dns-lookup local_socket_server udp_client udp_server tcp_client tcp_server
+SCRIPTS=show-interrupts.py
 
 all: $(BINFILES)
 
 install: $(BINFILES)
-	mkdir -p $(BINDIR)/ && cp -f $(BINFILES) $(BINDIR)/
+	mkdir -p $(BINDIR)/ && cp -f $(BINFILES) $(SCRIPTS) $(BINDIR)/
 
 clean:
 	rm -f *~ $(BINFILES)
