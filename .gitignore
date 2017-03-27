@@ -1,3 +1,5 @@
+*~
+*.o
 dns-lookup
 local_socket_server
 tcp_client
