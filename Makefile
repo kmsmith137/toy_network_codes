@@ -1,4 +1,4 @@
-CPP=g++ -std=c++11 -Wall -O3
+CPP=g++ -std=c++11 -Wall -O3 -pthread
 BINDIR=$(HOME)/bin
 
 BINFILES=dns-lookup local_socket_server udp_client udp_server tcp_client tcp_server
@@ -21,8 +21,8 @@ local_socket_server: local_socket_server.cpp
 udp_client: udp_client.cpp lexical_cast.cpp lexical_cast.hpp time_inlines.hpp
 	$(CPP) -o $@ udp_client.cpp lexical_cast.cpp
 
-udp_server: udp_server.cpp lexical_cast.cpp lexical_cast.hpp time_inlines.hpp
-	$(CPP) -o $@ udp_server.cpp lexical_cast.cpp
+udp_server: udp_server.cpp argument_parser.cpp lexical_cast.cpp argument_parser.hpp lexical_cast.hpp time_inlines.hpp
+	$(CPP) -o $@ udp_server.cpp argument_parser.cpp lexical_cast.cpp
 
 tcp_client: tcp_client.cpp lexical_cast.cpp lexical_cast.hpp
 	$(CPP) -o $@ tcp_client.cpp lexical_cast.cpp

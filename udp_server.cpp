@@ -3,18 +3,47 @@
 #include <arpa/inet.h>
 
 #include <vector>
+#include <thread>
 #include <cstring>
 #include <iostream>
 
 #include "time_inlines.hpp"
 #include "lexical_cast.hpp"
+#include "argument_parser.hpp"
 
 using namespace std;
 
 
+static void pin_current_thread_to_core(int core_id)
+{
+#ifdef __APPLE__
+    if (core_id == 0)
+	cerr << "warning: pinning threads to cores is not implemented in osx\n";
+    return;
+#else
+    int hwcores = std::thread::hardware_concurrency();
+    
+    if ((core_id < 0) || (core_id >= hwcores))
+	throw runtime_error("pin_thread_to_core: core_id=" + to_string(core_id) + " is out of range (hwcores=" + to_string(hwcores) + ")");
+
+    pthread_t thread = pthread_self();
+
+    cpu_set_t cs;
+    CPU_ZERO(&cs);
+    CPU_SET(core_id, &cs);
+
+    int err = pthread_setaffinity_np(thread, sizeof(cs), &cs);
+    if (err)
+        throw runtime_error("pthread_setaffinity_np() failed");
+#endif
+}
+
+
 static void usage()
 {
-    cerr << "usage: udp_server <ip_addr> <port>\n";
+    cerr << "usage: udp_server [-c CORE] <ip_addr> <port>\n"
+	 << "   -c pins the server thread to a specific core\n";
+
     exit(2);
 }
 
@@ -31,11 +60,22 @@ int main(int argc, char **argv)
     // too large, but that's ok!
     static constexpr int max_packet_size = 65536;
 
-    if (argc != 3)
+    int core = -1;
+    bool cflag = false;
+
+    argument_parser parser;
+    parser.add_flag_with_parameter("-c", core, cflag);
+
+    if (!parser.parse_args(argc, argv))
+	usage();
+    if (parser.nargs != 2)
 	usage();
 
-    string ip_addr = argv[1];
-    int udp_port = lexical_cast<int> (argv[2], "udp_port");
+    string ip_addr = parser.args[0];
+    int udp_port = lexical_cast<int> (parser.args[1], "udp_port");
+
+    if (cflag)
+	pin_current_thread_to_core(core);
 
     int sockfd = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
     if (sockfd < 0)
