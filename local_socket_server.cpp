@@ -1,7 +1,7 @@
 #include <unistd.h>
 #include <sys/time.h>
 #include <sys/socket.h>
-#include <arpa/inet.h>
+#include <sys/un.h>
 
 #include <vector>
 #include <cstring>
@@ -34,18 +34,17 @@ int main(int argc, char **argv)
     if (sockfd < 0)
 	throw runtime_error(string("socket() failed: ") + strerror(errno));
 
-#if 0
-    struct sockaddr_in server_address;
+    struct sockaddr_un server_address;
     memset(&server_address, 0, sizeof(server_address));
 	
-    server_address.sin_family = AF_INET;
-    inet_pton(AF_INET, "0.0.0.0", &server_address.sin_addr);
-    server_address.sin_port = htons(udp_port);
+    server_address.sun_family = AF_UNIX;
+    strcpy(server_address.sun_path, "mysocket");  // XXX
     
     int err = ::bind(sockfd, (struct sockaddr *) &server_address, sizeof(server_address));
     if (err < 0)
 	throw runtime_error(string("bind() failed: ") + strerror(errno));
 
+#if 0
     err = setsockopt(sockfd, SOL_SOCKET, SO_RCVBUF, (void *) &socket_bufsize, sizeof(socket_bufsize));
     if (err < 0)
 	throw runtime_error(string("setsockopt() failed: ") + strerror(errno));
