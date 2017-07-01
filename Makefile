@@ -1,7 +1,7 @@
 BINDIR=$(HOME)/bin
 CPP=g++ -std=c++11 -Wall -O3 -pthread -I$(HOME)/include
 
-BINFILES=dns-lookup local_socket_server udp_client udp_server tcp_client tcp_server
+BINFILES=dns-lookup local_socket_server named_pipe_client named_pipe_server udp_client udp_server tcp_client tcp_server pipe-l1
 SCRIPTS=show-interrupts.py
 
 BINFILES += zmq_pull_server zmq_push_client
@@ -18,6 +18,15 @@ dns-lookup: dns-lookup.cpp
 	$(CPP) -o $@ $<
 
 local_socket_server: local_socket_server.cpp
+	$(CPP) -o $@ $<
+
+named_pipe_client: named_pipe_client.cpp
+	$(CPP) -o $@ $<
+
+named_pipe_server: named_pipe_server.cpp
+	$(CPP) -o $@ $<
+
+pipe-l1: pipe-l1.cpp
 	$(CPP) -o $@ $<
 
 udp_client: udp_client.cpp lexical_cast.cpp lexical_cast.hpp time_inlines.hpp
