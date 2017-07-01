@@ -1,8 +1,10 @@
-CPP=g++ -std=c++11 -Wall -O3 -pthread
 BINDIR=$(HOME)/bin
+CPP=g++ -std=c++11 -Wall -O3 -pthread -I$(HOME)/include
 
 BINFILES=dns-lookup local_socket_server udp_client udp_server tcp_client tcp_server
 SCRIPTS=show-interrupts.py
+
+BINFILES += zmq_pull_server zmq_push_client
 
 all: $(BINFILES)
 
@@ -29,3 +31,10 @@ tcp_client: tcp_client.cpp lexical_cast.cpp lexical_cast.hpp
 
 tcp_server: tcp_server.cpp lexical_cast.cpp lexical_cast.hpp time_inlines.hpp
 	$(CPP) -o $@ tcp_server.cpp lexical_cast.cpp
+
+zmq_pull_server: zmq_pull_server.cpp
+	$(CPP) -o $@ zmq_pull_server.cpp -lzmq
+
+zmq_push_client: zmq_push_client.cpp
+	$(CPP) -o $@ zmq_push_client.cpp -lzmq
+
