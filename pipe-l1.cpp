@@ -48,6 +48,7 @@ int main(int argc, char **argv)
     // Parent process.
     close(pipefd[0]);
 
+#if 0
     int pipe_sz = fcntl(pipefd[1], F_GETPIPE_SZ);
     if (pipe_sz < 0)
 	throw runtime_error(string("fcntl(F_GETPIPE_SZ) failed: ") + strerror(errno));
@@ -63,13 +64,14 @@ int main(int argc, char **argv)
     if (pipe_sz < 0)
 	throw runtime_error(string("fcntl(F_GETPIPE_SZ) failed: ") + strerror(errno));
     cout << "getpipe_sz: " << pipe_sz << endl;
+#endif
     
     // To test what happens if L1a is slow to start
     // (Answer: L1b blocks at read())
     // sleep(5);
     
     int nmsg = 10;
-    int msg_size = 40960;
+    int msg_size = 32768;
     void *msg = malloc(msg_size);
     memset(msg, 0, msg_size);
 
