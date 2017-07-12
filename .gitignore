@@ -8,6 +8,5 @@ udp_client
 udp_server
 named_pipe_client
 named_pipe_server
-pipe-l1
 zmq_pull_server
 zmq_push_client
